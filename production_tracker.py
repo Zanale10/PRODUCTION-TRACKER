@@ -19,7 +19,7 @@ with col2:
 # ------------------- PASSWORD PROTECTION -------------------
 password = st.sidebar.text_input("🔐 Enter Admin Password", type="password")
 
-if password != "mysecret":
+if password != "PRD2025":
     st.warning("View-only mode. Enter admin password to upload or modify data.")
     st.stop()
 
