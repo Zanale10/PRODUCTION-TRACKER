@@ -115,8 +115,8 @@ else:
     st.stop()
 
 # ------------------- KPIs -------------------
-avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
-avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
+avg_expected = round(filtered_df['EXPECTED'].mean(), 1)
+avg_recorded = round(filtered_df['RECORDED'].mean(), 1)
 percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
 
 # Corrected: totals instead of averages
