@@ -45,26 +45,4 @@ else:
     # ------------------- FILE EXPIRY CHECK (16 HOURS) -------------------
     upload_age = time.time() - st.session_state.get("upload_time", 0)
     if upload_age > 16 * 3600:
-        st.error("⚠️ File access expired (16-hour limit reached). Please re-upload a new file.")
-        st.session_state.uploaded_file = None
-        st.stop()
-    else:
-        remaining_hours = round((16 * 3600 - upload_age) / 3600, 1)
-        st.info(f"🕓 File valid for approximately {remaining_hours} more hour(s).")
-
-    # ------------------- READ DATA -------------------
-    df = pd.read_excel("uploaded_data.xlsx", sheet_name="POWERBI SUMMARY")
-
-    # ------------------- LAST UPDATED -------------------
-    file_path = "uploaded_data.xlsx"
-    if os.path.exists(file_path):
-        last_modified = os.path.getmtime(file_path)
-        last_modified_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_modified))
-
-        time_diff = time.time() - last_modified
-        hours_ago = int(time_diff // 3600)
-        minutes_ago = int((time_diff % 3600) // 60)
-        if hours_ago > 0:
-            ago_text = f"{hours_ago} hour{'s' if hours_ago > 1 else ''} ago"
-        elif minutes_ago > 0:
-            ago_text = f"{minutes_ago} minute{'s' if minutes_ago_
+        st.erro
