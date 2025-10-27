@@ -28,7 +28,7 @@ def upload_file():
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success("File uploaded successfully! Please refresh the page to load the dashboard.")
-        st.stop()  # stop so user refreshes
+        st.stop()  # stop execution so user refreshes
     else:
         st.stop()
 
@@ -118,9 +118,9 @@ col3.markdown(kpi_style.format(label="Avg Expected Output", value=avg_expected),
 col4.markdown(kpi_style.format(label="Avg Recorded Output", value=avg_recorded), unsafe_allow_html=True)
 col5.markdown(kpi_style.format(label="% Change", value=f"{percent_change}%"), unsafe_allow_html=True)
 
-# ------------------- CHARTS -------------------
+# ------------------- BAR CHARTS -------------------
 if len(selected_machines) == 1:
-    # Single machine = Bar chart
+    # Single machine = large bar chart
     chart_height = 500
     melted_df = filtered_df.melt(
         id_vars=['PIPE'],
@@ -144,25 +144,33 @@ if len(selected_machines) == 1:
     fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', yaxis_title="Output", xaxis_title="Size", bargap=0.2, plot_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig, use_container_width=True)
 else:
-    # Multiple machines = Line chart, 2x2 layout
+    # Multiple machines = smaller bar charts in 2x2 layout
     chart_height = 300
     machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]
     for chunk in machine_chunks:
         cols = st.columns(len(chunk))
         for i, machine in enumerate(chunk):
             machine_df = filtered_df[filtered_df['MACHINE'] == machine]
-            fig = px.line(
-                machine_df,
+            melted_df = machine_df.melt(
+                id_vars=['PIPE'],
+                value_vars=['EXPECTED', 'RECORDED'],
+                var_name='Type',
+                value_name='Output'
+            )
+            fig = px.bar(
+                melted_df,
                 x='PIPE',
-                y=['EXPECTED', 'RECORDED'],
-                markers=True,
-                title=f"Machine {machine} - Expected vs Recorded",
-                labels={'value': 'Output', 'PIPE': 'Size', 'variable': 'Type'},
+                y='Output',
+                color='Type',
+                barmode='group',
+                text='Output',
+                title=f"Machine {machine}",
+                labels={'PIPE': 'Size', 'Output': 'Output'},
                 color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
                 height=chart_height
             )
-            fig.update_traces(texttemplate='%{y:.0f}', textposition='top center')
-            fig.update_layout(yaxis_title="Output", xaxis_title="Size", plot_bgcolor='rgba(0,0,0,0)')
+            fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
+            fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', yaxis_title="Output", xaxis_title="Size", bargap=0.2, plot_bgcolor='rgba(0,0,0,0)')
             cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- DATA TABLE -------------------
