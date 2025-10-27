@@ -23,17 +23,16 @@ with col2:
 UPLOAD_PATH = "uploaded_data.xlsx"
 EXPIRY_HOURS = 16
 
-# ------------------- FILE UPLOAD & EXPIRY -------------------
+#UPLOADING FILE
 def upload_file():
     uploaded_file = st.file_uploader(" Upload Excel File", type=["xlsx"])
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
-        st.success("File uploaded successfully! Dashboard will now load.")
-        st.experimental_rerun()
+        st.success(" File uploaded successfully! Please refresh the page to load the dashboard.")
+        st.stop()  # stops execution; refresh will load new file
     else:
-        st.stop()
-
+        st.stop()  # stops execution if no file is uploaded
 # Check if file exists
 if os.path.exists(UPLOAD_PATH):
     file_mtime = os.path.getmtime(UPLOAD_PATH)
@@ -183,4 +182,5 @@ with st.expander(" View Raw Data"):
 if st.button("🔄 Upload a New File"):
     os.remove(UPLOAD_PATH) if os.path.exists(UPLOAD_PATH) else None
     st.success(" File cleared. Please upload a new file.")
-    st.experimental_rerun()
+    st.stop()  # stops execution; user refresh will load new file
+
