@@ -119,10 +119,9 @@ avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
 avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
 percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
 
-# Totals for weight columns
-total_expected_weight = filtered_df['EXPECTED WEIGHT'].sum() if 'EXPECTED WEIGHT' in filtered_df.columns else 0
-total_achieved_weight = filtered_df['ACHIEVED TOTAL WEIGHT'].sum() if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
-
+# Totals for weight columns (rounded to 2 decimal places)
+total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
+total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 # ------------------- STYLED BOXED KPIs -------------------
 kpi_style = """
 <div style='
@@ -219,4 +218,7 @@ with st.expander("🔍 View Raw Data"):
     st.dataframe(filtered_df[columns_to_show])
 
 # ------------------- RESET BUTTON -------------------
-if st.button("🔄 Upload a
+if st.button("🔄 Upload a New File"):
+    st.session_state.uploaded_file = None
+    st.session_state.upload_time = 0.0
+    st.experimental_rerun()
