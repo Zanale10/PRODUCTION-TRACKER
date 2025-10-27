@@ -119,12 +119,13 @@ avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
 avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
 percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
 
-avg_expected_weight = round(filtered_df['EXPECTED WEIGHT'].mean(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
-avg_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].mean(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
+# Corrected: totals instead of averages
+total_expected_weight = filtered_df['EXPECTED WEIGHT'].sum() if 'EXPECTED WEIGHT' in filtered_df.columns else 0
+total_achieved_weight = filtered_df['ACHIEVED TOTAL WEIGHT'].sum() if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
 col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Achieved Weight", avg_achieved_weight)
-col2.metric("Expected Weight", avg_expected_weight)
+col1.metric("Achieved Weight", total_achieved_weight)
+col2.metric("Expected Weight", total_expected_weight)
 col3.metric("Avg Expected Output", avg_expected)
 col4.metric("Avg Recorded Output", avg_recorded)
 col5.metric("📊 % Change", f"{percent_change}%")
