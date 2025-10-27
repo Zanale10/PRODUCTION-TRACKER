@@ -19,51 +19,41 @@ with col1:
 with col2:
     st.title("Production Output Tracker")
 
-# ------------------- SESSION STATE -------------------
-if "uploaded_file" not in st.session_state:
-    st.session_state.uploaded_file = None
-if "upload_time" not in st.session_state:
-    st.session_state.upload_time = 0.0
-
+# ------------------- FILE SETTINGS -------------------
 UPLOAD_PATH = "uploaded_data.xlsx"
 EXPIRY_HOURS = 16
 
-# ------------------- FILE UPLOAD -------------------
-if st.session_state.uploaded_file is None:
+# ------------------- FILE UPLOAD & EXPIRY -------------------
+def upload_file():
     uploaded_file = st.file_uploader(" Upload Excel File", type=["xlsx"])
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
-        st.session_state.uploaded_file = UPLOAD_PATH
-        st.session_state.upload_time = time.time()
-        st.success(" File uploaded successfully! Dashboard will now load.")
-        st.rerun()  # reload dashboard
+        st.success("File uploaded successfully! Dashboard will now load.")
+        st.experimental_rerun()
     else:
-        # No file uploaded yet, stop execution
         st.stop()
 
-# ------------------- FILE EXPIRY CHECK -------------------
+# Check if file exists
 if os.path.exists(UPLOAD_PATH):
-    upload_time = st.session_state.get("upload_time", os.path.getmtime(UPLOAD_PATH))
-    upload_age = time.time() - upload_time
+    file_mtime = os.path.getmtime(UPLOAD_PATH)
+    age_seconds = time.time() - file_mtime
 
-    if upload_age > EXPIRY_HOURS * 3600:
-        st.warning(f" File expired (>{EXPIRY_HOURS} hours). Please upload a new file to continue.")
-        st.session_state.uploaded_file = None
-        st.stop()
-    else:
-        st.session_state.uploaded_file = UPLOAD_PATH
-        st.session_state.upload_time = upload_time
+    if age_seconds > EXPIRY_HOURS * 3600:
+        st.warning(f" File expired (>{EXPIRY_HOURS} hours). Please upload a new file.")
+        upload_file()
+else:
+    upload_file()
 
 # ------------------- READ DATA -------------------
 try:
     try:
-        df = pd.read_excel(st.session_state.uploaded_file, sheet_name="POWERBI SUMMARY")
+        df = pd.read_excel(UPLOAD_PATH, sheet_name="POWERBI SUMMARY")
     except ValueError:
         st.warning("Sheet 'POWERBI SUMMARY' not found; loading first sheet instead.")
-        df = pd.read_excel(st.session_state.uploaded_file, sheet_name=0)
+        df = pd.read_excel(UPLOAD_PATH, sheet_name=0)
 except Exception as e:
-    st.error(f"Failed to read the uploaded Excel file: {e}")
+    st.error(f"Failed to read the Excel file: {e}")
     st.stop()
 
 # ------------------- CLEANUP -------------------
@@ -95,7 +85,7 @@ else:
 
 if 'PIPE' in df.columns:
     size_list = df['PIPE'].dropna().unique()
-    selected_sizes = st.sidebar.multiselect(" Select Sizes", size_list, default=size_list)
+    selected_sizes = st.sidebar.multiselect("Select Sizes", size_list, default=size_list)
     filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
 else:
     st.error("Column 'PIPE' not found.")
@@ -191,7 +181,6 @@ with st.expander(" View Raw Data"):
 
 # ------------------- RESET BUTTON -------------------
 if st.button("🔄 Upload a New File"):
-    st.session_state.uploaded_file = None
-    st.session_state.upload_time = 0.0
-    st.success(" File reset. Please upload a new file to continue.")
-    st.rerun()
+    os.remove(UPLOAD_PATH) if os.path.exists(UPLOAD_PATH) else None
+    st.success(" File cleared. Please upload a new file.")
+    st.experimental_rerun()
