@@ -103,15 +103,15 @@ else:
         df = df[df['MONTH'].isin(selected_months)]
 
     if 'MACHINE' in df.columns:
-        machine_list = df['MACHINE'].dropna().unique()
-        selected_machine = st.sidebar.selectbox("🧰 Select Machine", machine_list)
-        filtered_df = df[df['MACHINE'] == selected_machine]
+        machine_list = sorted(df['MACHINE'].dropna().unique())
+        selected_machines = st.sidebar.multiselect("🧰 Select Machine(s)", machine_list, default=machine_list)
+        filtered_df = df[df['MACHINE'].isin(selected_machines)]
     else:
         st.error("Column 'MACHINE' not found.")
         st.stop()
 
     if 'PIPE' in df.columns:
-        size_list = df['PIPE'].dropna().unique()
+        size_list = sorted(df['PIPE'].dropna().unique())
         selected_sizes = st.sidebar.multiselect("📏 Select Sizes", size_list, default=size_list)
         filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
     else:
@@ -121,16 +121,21 @@ else:
     # ------------------- KPIs -------------------
     avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
     avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
+    avg_expected_wt = round(filtered_df['EXPECTED WEIGHT'].mean(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
+    avg_achieved_wt = round(filtered_df['ACHIEVED TOTAL WEIGHT'].mean(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
+    ach_percent = round((avg_achieved_wt / avg_expected_wt * 100), 2) if avg_expected_wt != 0 else 0
     percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Avg Expected Output", avg_expected)
-    col2.metric("Avg Recorded Output", avg_recorded)
-    col3.metric("📊 % Change", f"{percent_change}%")
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
+    kpi1.metric("Avg Expected Output", avg_expected)
+    kpi2.metric("Avg Recorded Output", avg_recorded)
+    kpi3.metric("Expected Weight", avg_expected_wt)
+    kpi4.metric("Achieved Weight", avg_achieved_wt)
+    kpi5.metric("🎯 Achievement %", f"{ach_percent}%")
 
     # ------------------- BAR CHART -------------------
     melted_df = filtered_df.melt(
-        id_vars=['PIPE'],
+        id_vars=['PIPE', 'MACHINE'],
         value_vars=['EXPECTED', 'RECORDED'],
         var_name='Type',
         value_name='Output'
@@ -140,28 +145,26 @@ else:
         melted_df,
         x='PIPE',
         y='Output',
-        color='Type',
+        color='MACHINE',
         barmode='group',
-        text='Output',
-        title=f"Size-wise Expected vs Recorded Output - Machine {selected_machine}",
+        facet_col='Type',
+        title="📊 Size-wise Output Across Machines",
         labels={'PIPE': 'Size', 'Output': 'Output'},
-        color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'}
     )
 
-    fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
+    fig.update_traces(texttemplate='%{y:.0f}', textposition='outside')
     fig.update_layout(
         uniformtext_minsize=8,
         uniformtext_mode='hide',
         yaxis_title="Output",
-        xaxis_title="Size",
-        bargap=0.2,
+        bargap=0.15,
         plot_bgcolor='rgba(0,0,0,0)'
     )
     st.plotly_chart(fig, use_container_width=True)
 
     # ------------------- DATA TABLE -------------------
     with st.expander("🔍 View Raw Data"):
-        columns_to_show = [col for col in ['MONTH', 'MACHINE', 'PIPE', 'EXPECTED', 'RECORDED', '% CHANGE'] if col in filtered_df.columns]
+        columns_to_show = [col for col in ['MONTH', 'MACHINE', 'PIPE', 'EXPECTED', 'RECORDED', 'EXPECTED WEIGHT', 'ACHIEVED TOTAL WEIGHT', '% CHANGE'] if col in filtered_df.columns]
         st.dataframe(filtered_df[columns_to_show])
 
     # ------------------- RESET BUTTON -------------------
