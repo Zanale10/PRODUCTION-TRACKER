@@ -28,12 +28,6 @@ if "upload_time" not in st.session_state:
 UPLOAD_PATH = "uploaded_data.xlsx"
 EXPIRY_HOURS = 16
 
-# ------------------- RESTORE PREVIOUS FILE -------------------
-if st.session_state.uploaded_file is None and os.path.exists(UPLOAD_PATH):
-    st.session_state.uploaded_file = UPLOAD_PATH
-    if st.session_state.upload_time == 0:
-        st.session_state.upload_time = os.path.getmtime(UPLOAD_PATH)
-
 # ------------------- FILE UPLOAD -------------------
 if st.session_state.uploaded_file is None:
     uploaded_file = st.file_uploader(" Upload Excel File", type=["xlsx"])
@@ -42,42 +36,29 @@ if st.session_state.uploaded_file is None:
             f.write(uploaded_file.getbuffer())
         st.session_state.uploaded_file = UPLOAD_PATH
         st.session_state.upload_time = time.time()
-        st.success("File uploaded successfully! Dashboard will now load.")
-        st.rerun()
-else:
-    # ------------------- FILE EXPIRY CHECK -------------------
-    upload_time = st.session_state.get("upload_time", 0) or (os.path.getmtime(UPLOAD_PATH) if os.path.exists(UPLOAD_PATH) else 0)
-    upload_age = time.time() - upload_time
-    if upload_age > EXPIRY_HOURS * 3600:
-        st.error(f"File access expired ({EXPIRY_HOURS}-hour limit reached). Please re-upload a new file.")
-        st.session_state.uploaded_file = None
-        st.stop()
+        st.success(" File uploaded successfully! Dashboard will now load.")
+        st.experimental_rerun()  # reload script to pick new file
+    else:
+        st.stop()  # stop execution until a file is uploaded
+
+# ------------------- FILE EXPIRY CHECK -------------------
+upload_time = st.session_state.get("upload_time", 0) or (os.path.getmtime(UPLOAD_PATH) if os.path.exists(UPLOAD_PATH) else 0)
+upload_age = time.time() - upload_time
+if upload_age > EXPIRY_HOURS * 3600:
+    st.error(f"File access expired ({EXPIRY_HOURS}-hour limit reached). Please re-upload a new file.")
+    st.session_state.uploaded_file = None
+    st.stop()
 
 # ------------------- READ DATA -------------------
 try:
     try:
-        df = pd.read_excel(UPLOAD_PATH, sheet_name="POWERBI SUMMARY")
+        df = pd.read_excel(st.session_state.uploaded_file, sheet_name="POWERBI SUMMARY")
     except ValueError:
         st.warning("Sheet 'POWERBI SUMMARY' not found; loading first sheet instead.")
-        df = pd.read_excel(UPLOAD_PATH, sheet_name=0)
+        df = pd.read_excel(st.session_state.uploaded_file, sheet_name=0)
 except Exception as e:
     st.error(f"Failed to read the uploaded Excel file: {e}")
     st.stop()
-
-# ------------------- LAST UPDATED -------------------
-if os.path.exists(UPLOAD_PATH):
-    last_modified = os.path.getmtime(UPLOAD_PATH)
-    last_modified_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_modified))
-    time_diff = time.time() - last_modified
-    hours_ago = int(time_diff // 3600)
-    minutes_ago = int((time_diff % 3600) // 60)
-    if hours_ago > 0:
-        ago_text = f"{hours_ago} hour{'s' if hours_ago > 1 else ''} ago"
-    elif minutes_ago > 0:
-        ago_text = f"{minutes_ago} minute{'s' if minutes_ago > 1 else ''} ago"
-    else:
-        ago_text = "just now"
-    st.caption(f"🕒 Last updated: {last_modified_time} ({ago_text})")
 
 # ------------------- CLEANUP -------------------
 numeric_columns = ['EXPECTED', 'RECORDED', 'EXPECTED WEIGHT', 'ACHIEVED TOTAL WEIGHT', 'TOTAL HOURS']
@@ -87,7 +68,7 @@ for col in numeric_columns:
 
 if 'EXPECTED' in df.columns and 'RECORDED' in df.columns:
     df['% CHANGE'] = df.apply(
-        lambda r: ((r['RECORDED'] - r['EXPECTED']) / r['EXPECTED'] * 100) 
+        lambda r: ((r['RECORDED'] - r['EXPECTED']) / r['EXPECTED'] * 100)
         if pd.notnull(r['EXPECTED']) and r['EXPECTED'] != 0 else None,
         axis=1
     )
@@ -95,7 +76,7 @@ if 'EXPECTED' in df.columns and 'RECORDED' in df.columns:
 # ------------------- SIDEBAR FILTERS -------------------
 if 'MONTH' in df.columns:
     month_list = sorted(df['MONTH'].dropna().unique())
-    selected_months = st.sidebar.multiselect("Select Month(s)", month_list, default=month_list)
+    selected_months = st.sidebar.multiselect(" Select Month(s)", month_list, default=month_list)
     df = df[df['MONTH'].isin(selected_months)]
 
 if 'MACHINE' in df.columns:
@@ -108,7 +89,7 @@ else:
 
 if 'PIPE' in df.columns:
     size_list = df['PIPE'].dropna().unique()
-    selected_sizes = st.sidebar.multiselect("Select Sizes", size_list, default=size_list)
+    selected_sizes = st.sidebar.multiselect(" Select Sizes", size_list, default=size_list)
     filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
 else:
     st.error("Column 'PIPE' not found.")
@@ -119,7 +100,7 @@ avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
 avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
 percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
 
-# Totals for weight columns (rounded to 2 decimals)
+# Totals for weight columns (rounded)
 total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
 total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
@@ -168,14 +149,7 @@ if len(selected_machines) == 1:
         height=chart_height
     )
     fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
-    fig.update_layout(
-        uniformtext_minsize=8,
-        uniformtext_mode='hide',
-        yaxis_title="Output",
-        xaxis_title="Size",
-        bargap=0.2,
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
+    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', yaxis_title="Output", xaxis_title="Size", bargap=0.2, plot_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig, use_container_width=True)
 else:
     chart_height = 300
@@ -203,23 +177,17 @@ else:
                 height=chart_height
             )
             fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
-            fig.update_layout(
-                uniformtext_minsize=8,
-                uniformtext_mode='hide',
-                yaxis_title="Output",
-                xaxis_title="Size",
-                bargap=0.2,
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
+            fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', yaxis_title="Output", xaxis_title="Size", bargap=0.2, plot_bgcolor='rgba(0,0,0,0)')
             cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- DATA TABLE -------------------
 with st.expander("🔍 View Raw Data"):
-    columns_to_show = [col for col in ['MONTH', 'MACHINE', 'PIPE', 'EXPECTED', 'RECORDED', 'EXPECTED WEIGHT', 'ACHIEVED TOTAL WEIGHT', '% CHANGE'] if col in filtered_df.columns]
+    columns_to_show = [col for col in ['MONTH','MACHINE','PIPE','EXPECTED','RECORDED','EXPECTED WEIGHT','ACHIEVED TOTAL WEIGHT','% CHANGE'] if col in filtered_df.columns]
     st.dataframe(filtered_df[columns_to_show])
 
 # ------------------- RESET BUTTON -------------------
 if st.button("🔄 Upload a New File"):
     st.session_state.uploaded_file = None
     st.session_state.upload_time = 0.0
-    st.rerun()
+    st.success(" File reset. Please upload a new file to continue.")
+    st.experimental_rerun()
