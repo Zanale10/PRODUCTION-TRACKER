@@ -52,9 +52,6 @@ else:
         st.error(f"⚠️ File access expired ({EXPIRY_HOURS}-hour limit reached). Please re-upload a new file.")
         st.session_state.uploaded_file = None
         st.stop()
-    else:
-        remaining_hours = round((EXPIRY_HOURS * 3600 - upload_age) / 3600, 1)
-        st.info(f"🕓 File valid for approximately {remaining_hours} more hour(s).")
 
 # ------------------- READ DATA -------------------
 try:
@@ -135,6 +132,7 @@ col5.metric("📊 % Change", f"{percent_change}%")
 # ------------------- BAR CHART -------------------
 if len(selected_machines) == 1:
     # Single machine selected - one chart
+    chart_height = 500
     melted_df = filtered_df.melt(
         id_vars=['PIPE'],
         value_vars=['EXPECTED', 'RECORDED'],
@@ -150,7 +148,8 @@ if len(selected_machines) == 1:
         text='Output',
         title=f"Size-wise Expected vs Recorded Output - Machine {selected_machines[0]}",
         labels={'PIPE': 'Size', 'Output': 'Output'},
-        color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'}
+        color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
+        height=chart_height
     )
     fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
     fig.update_layout(
@@ -164,36 +163,42 @@ if len(selected_machines) == 1:
     st.plotly_chart(fig, use_container_width=True)
 
 else:
-    # Multiple machines selected - individual chart per machine
-    for machine in selected_machines:
-        machine_df = filtered_df[filtered_df['MACHINE'] == machine]
-        melted_df = machine_df.melt(
-            id_vars=['PIPE'],
-            value_vars=['EXPECTED', 'RECORDED'],
-            var_name='Type',
-            value_name='Output'
-        )
-        fig = px.bar(
-            melted_df,
-            x='PIPE',
-            y='Output',
-            color='Type',
-            barmode='group',
-            text='Output',
-            title=f"Size-wise Expected vs Recorded Output - Machine {machine}",
-            labels={'PIPE': 'Size', 'Output': 'Output'},
-            color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'}
-        )
-        fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
-        fig.update_layout(
-            uniformtext_minsize=8,
-            uniformtext_mode='hide',
-            yaxis_title="Output",
-            xaxis_title="Size",
-            bargap=0.2,
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # Multiple machines selected - arrange in 2x2 grid
+    chart_height = 300
+    machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]  # split into rows of 2
+
+    for chunk in machine_chunks:
+        cols = st.columns(len(chunk))
+        for i, machine in enumerate(chunk):
+            machine_df = filtered_df[filtered_df['MACHINE'] == machine]
+            melted_df = machine_df.melt(
+                id_vars=['PIPE'],
+                value_vars=['EXPECTED', 'RECORDED'],
+                var_name='Type',
+                value_name='Output'
+            )
+            fig = px.bar(
+                melted_df,
+                x='PIPE',
+                y='Output',
+                color='Type',
+                barmode='group',
+                text='Output',
+                title=f"Machine {machine}",
+                labels={'PIPE': 'Size', 'Output': 'Output'},
+                color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
+                height=chart_height
+            )
+            fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
+            fig.update_layout(
+                uniformtext_minsize=8,
+                uniformtext_mode='hide',
+                yaxis_title="Output",
+                xaxis_title="Size",
+                bargap=0.2,
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- DATA TABLE -------------------
 with st.expander("🔍 View Raw Data"):
