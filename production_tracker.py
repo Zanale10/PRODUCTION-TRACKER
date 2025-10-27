@@ -115,24 +115,39 @@ else:
     st.stop()
 
 # ------------------- KPIs -------------------
-avg_expected = round(filtered_df['EXPECTED'].mean(), 1)
-avg_recorded = round(filtered_df['RECORDED'].mean(), 1)
+avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
+avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
 percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
 
-# Corrected: totals instead of averages
+# Totals for weight columns
 total_expected_weight = filtered_df['EXPECTED WEIGHT'].sum() if 'EXPECTED WEIGHT' in filtered_df.columns else 0
 total_achieved_weight = filtered_df['ACHIEVED TOTAL WEIGHT'].sum() if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
+# ------------------- STYLED BOXED KPIs -------------------
+kpi_style = """
+<div style='
+    background-color: #f0f2f6; 
+    padding: 12px; 
+    border-radius: 10px; 
+    text-align: center; 
+    font-size: 16px; 
+    font-weight: bold;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+'>
+    <div style='font-size:12px;color:grey;'>{label}</div>
+    <div style='font-size:20px;color:black;'>{value}</div>
+</div>
+"""
+
 col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Achieved Weight", total_achieved_weight)
-col2.metric("Expected Weight", total_expected_weight)
-col3.metric("Avg Expected Output", avg_expected)
-col4.metric("Avg Recorded Output", avg_recorded)
-col5.metric("📊 % Change", f"{percent_change}%")
+col1.markdown(kpi_style.format(label="Achieved Weight", value=total_achieved_weight), unsafe_allow_html=True)
+col2.markdown(kpi_style.format(label="Expected Weight", value=total_expected_weight), unsafe_allow_html=True)
+col3.markdown(kpi_style.format(label="Avg Expected Output", value=avg_expected), unsafe_allow_html=True)
+col4.markdown(kpi_style.format(label="Avg Recorded Output", value=avg_recorded), unsafe_allow_html=True)
+col5.markdown(kpi_style.format(label="% Change", value=f"{percent_change}%"), unsafe_allow_html=True)
 
 # ------------------- BAR CHART -------------------
 if len(selected_machines) == 1:
-    # Single machine selected - one chart
     chart_height = 500
     melted_df = filtered_df.melt(
         id_vars=['PIPE'],
@@ -162,12 +177,9 @@ if len(selected_machines) == 1:
         plot_bgcolor='rgba(0,0,0,0)'
     )
     st.plotly_chart(fig, use_container_width=True)
-
 else:
-    # Multiple machines selected - arrange in 2x2 grid
     chart_height = 300
-    machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]  # split into rows of 2
-
+    machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]
     for chunk in machine_chunks:
         cols = st.columns(len(chunk))
         for i, machine in enumerate(chunk):
@@ -207,7 +219,4 @@ with st.expander("🔍 View Raw Data"):
     st.dataframe(filtered_df[columns_to_show])
 
 # ------------------- RESET BUTTON -------------------
-if st.button("🔄 Upload a New File"):
-    st.session_state.uploaded_file = None
-    st.session_state.upload_time = 0.0
-    st.experimental_rerun()
+if st.button("🔄 Upload a
