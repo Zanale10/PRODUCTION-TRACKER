@@ -30,24 +30,30 @@ EXPIRY_HOURS = 16
 
 # ------------------- FILE UPLOAD -------------------
 if st.session_state.uploaded_file is None:
-    uploaded_file = st.file_uploader("📁 Upload Excel File", type=["xlsx"])
+    uploaded_file = st.file_uploader(" Upload Excel File", type=["xlsx"])
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.session_state.uploaded_file = UPLOAD_PATH
         st.session_state.upload_time = time.time()
-        st.success("✅ File uploaded successfully! Dashboard will now load.")
-        st.rerun()  # <-- updated
+        st.success(" File uploaded successfully! Dashboard will now load.")
+        st.rerun()  # reload dashboard
     else:
-        st.stop()  # stop execution until a file is uploaded
+        # No file uploaded yet, stop execution
+        st.stop()
 
 # ------------------- FILE EXPIRY CHECK -------------------
-upload_time = st.session_state.get("upload_time", 0) or (os.path.getmtime(UPLOAD_PATH) if os.path.exists(UPLOAD_PATH) else 0)
-upload_age = time.time() - upload_time
-if upload_age > EXPIRY_HOURS * 3600:
-    st.error(f"⚠️ File access expired ({EXPIRY_HOURS}-hour limit reached). Please re-upload a new file.")
-    st.session_state.uploaded_file = None
-    st.stop()
+if os.path.exists(UPLOAD_PATH):
+    upload_time = st.session_state.get("upload_time", os.path.getmtime(UPLOAD_PATH))
+    upload_age = time.time() - upload_time
+
+    if upload_age > EXPIRY_HOURS * 3600:
+        st.warning(f" File expired (>{EXPIRY_HOURS} hours). Please upload a new file to continue.")
+        st.session_state.uploaded_file = None
+        st.stop()
+    else:
+        st.session_state.uploaded_file = UPLOAD_PATH
+        st.session_state.upload_time = upload_time
 
 # ------------------- READ DATA -------------------
 try:
@@ -81,7 +87,7 @@ if 'MONTH' in df.columns:
 
 if 'MACHINE' in df.columns:
     machine_list = df['MACHINE'].dropna().unique()
-    selected_machines = st.sidebar.multiselect("🧰 Select Machine(s)", machine_list, default=machine_list)
+    selected_machines = st.sidebar.multiselect(" Select Machine(s)", machine_list, default=machine_list)
     filtered_df = df[df['MACHINE'].isin(selected_machines)]
 else:
     st.error("Column 'MACHINE' not found.")
@@ -89,7 +95,7 @@ else:
 
 if 'PIPE' in df.columns:
     size_list = df['PIPE'].dropna().unique()
-    selected_sizes = st.sidebar.multiselect("📏 Select Sizes", size_list, default=size_list)
+    selected_sizes = st.sidebar.multiselect(" Select Sizes", size_list, default=size_list)
     filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
 else:
     st.error("Column 'PIPE' not found.")
@@ -99,8 +105,6 @@ else:
 avg_expected = round(filtered_df['EXPECTED'].mean(), 2)
 avg_recorded = round(filtered_df['RECORDED'].mean(), 2)
 percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
-
-# Totals for weight columns (rounded)
 total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
 total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
@@ -181,7 +185,7 @@ else:
             cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- DATA TABLE -------------------
-with st.expander("🔍 View Raw Data"):
+with st.expander(" View Raw Data"):
     columns_to_show = [col for col in ['MONTH','MACHINE','PIPE','EXPECTED','RECORDED','EXPECTED WEIGHT','ACHIEVED TOTAL WEIGHT','% CHANGE'] if col in filtered_df.columns]
     st.dataframe(filtered_df[columns_to_show])
 
@@ -189,5 +193,5 @@ with st.expander("🔍 View Raw Data"):
 if st.button("🔄 Upload a New File"):
     st.session_state.uploaded_file = None
     st.session_state.upload_time = 0.0
-    st.success("✅ File reset. Please upload a new file to continue.")
-    st.rerun()  # <-- updated
+    st.success(" File reset. Please upload a new file to continue.")
+    st.rerun()
