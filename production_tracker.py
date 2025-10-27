@@ -30,14 +30,14 @@ EXPIRY_HOURS = 16
 
 # ------------------- FILE UPLOAD -------------------
 if st.session_state.uploaded_file is None:
-    uploaded_file = st.file_uploader(" Upload Excel File", type=["xlsx"])
+    uploaded_file = st.file_uploader("📁 Upload Excel File", type=["xlsx"])
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.session_state.uploaded_file = UPLOAD_PATH
         st.session_state.upload_time = time.time()
-        st.success(" File uploaded successfully! Dashboard will now load.")
-        st.experimental_rerun()  # reload script to pick new file
+        st.success("✅ File uploaded successfully! Dashboard will now load.")
+        st.rerun()  # <-- updated
     else:
         st.stop()  # stop execution until a file is uploaded
 
@@ -45,7 +45,7 @@ if st.session_state.uploaded_file is None:
 upload_time = st.session_state.get("upload_time", 0) or (os.path.getmtime(UPLOAD_PATH) if os.path.exists(UPLOAD_PATH) else 0)
 upload_age = time.time() - upload_time
 if upload_age > EXPIRY_HOURS * 3600:
-    st.error(f"File access expired ({EXPIRY_HOURS}-hour limit reached). Please re-upload a new file.")
+    st.error(f"⚠️ File access expired ({EXPIRY_HOURS}-hour limit reached). Please re-upload a new file.")
     st.session_state.uploaded_file = None
     st.stop()
 
@@ -76,12 +76,12 @@ if 'EXPECTED' in df.columns and 'RECORDED' in df.columns:
 # ------------------- SIDEBAR FILTERS -------------------
 if 'MONTH' in df.columns:
     month_list = sorted(df['MONTH'].dropna().unique())
-    selected_months = st.sidebar.multiselect(" Select Month(s)", month_list, default=month_list)
+    selected_months = st.sidebar.multiselect("🗓️ Select Month(s)", month_list, default=month_list)
     df = df[df['MONTH'].isin(selected_months)]
 
 if 'MACHINE' in df.columns:
     machine_list = df['MACHINE'].dropna().unique()
-    selected_machines = st.sidebar.multiselect(" Select Machine(s)", machine_list, default=machine_list)
+    selected_machines = st.sidebar.multiselect("🧰 Select Machine(s)", machine_list, default=machine_list)
     filtered_df = df[df['MACHINE'].isin(selected_machines)]
 else:
     st.error("Column 'MACHINE' not found.")
@@ -89,7 +89,7 @@ else:
 
 if 'PIPE' in df.columns:
     size_list = df['PIPE'].dropna().unique()
-    selected_sizes = st.sidebar.multiselect(" Select Sizes", size_list, default=size_list)
+    selected_sizes = st.sidebar.multiselect("📏 Select Sizes", size_list, default=size_list)
     filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
 else:
     st.error("Column 'PIPE' not found.")
@@ -189,5 +189,5 @@ with st.expander("🔍 View Raw Data"):
 if st.button("🔄 Upload a New File"):
     st.session_state.uploaded_file = None
     st.session_state.upload_time = 0.0
-    st.success(" File reset. Please upload a new file to continue.")
-    st.experimental_rerun()
+    st.success("✅ File reset. Please upload a new file to continue.")
+    st.rerun()  # <-- updated
