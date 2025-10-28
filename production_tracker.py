@@ -28,7 +28,7 @@ def upload_file():
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success("File uploaded successfully! Please refresh the page to load the dashboard.")
-        st.stop()  # stop execution so user refreshes
+        st.stop()
     else:
         st.stop()
 
@@ -101,11 +101,11 @@ percent_change = round(((total_achieved_weight - total_expected_weight) / total_
 # ------------------- STYLED BOXED KPIs -------------------
 kpi_style = """
 <div style='
-    background-color: #f0f2f6; 
-    padding: 12px; 
-    border-radius: 10px; 
-    text-align: center; 
-    font-size: 16px; 
+    background-color: #f0f2f6;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 16px;
     font-weight: bold;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
 '>
@@ -143,9 +143,22 @@ if len(selected_machines) == 1:
         color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
         height=chart_height
     )
-    fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
-    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', yaxis_title="Output", xaxis_title="Size", bargap=0.2, plot_bgcolor='rgba(0,0,0,0)')
+    fig.update_traces(
+        texttemplate='%{text:.0f}',
+        textposition='outside',
+        cliponaxis=False
+    )
+    fig.update_layout(
+        uniformtext_minsize=8,
+        uniformtext_mode='show',
+        yaxis_title="Output",
+        xaxis_title="Size",
+        bargap=0.2,
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(t=60, b=60, l=40, r=40)
+    )
     st.plotly_chart(fig, use_container_width=True)
+
 else:
     # Multiple machines = smaller bar charts in 2x2 layout
     chart_height = 300
@@ -172,8 +185,20 @@ else:
                 color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
                 height=chart_height
             )
-            fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
-            fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', yaxis_title="Output", xaxis_title="Size", bargap=0.2, plot_bgcolor='rgba(0,0,0,0)')
+            fig.update_traces(
+                texttemplate='%{text:.0f}',
+                textposition='outside',
+                cliponaxis=False
+            )
+            fig.update_layout(
+                uniformtext_minsize=8,
+                uniformtext_mode='show',
+                yaxis_title="Output",
+                xaxis_title="Size",
+                bargap=0.2,
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(t=60, b=60, l=40, r=40)
+            )
             cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- DATA TABLE -------------------
