@@ -91,9 +91,12 @@ else:
 # ------------------- KPIs -------------------
 avg_expected = round(filtered_df['EXPECTED'].mean(), 2) if 'EXPECTED' in filtered_df.columns else 0
 avg_recorded = round(filtered_df['RECORDED'].mean(), 2) if 'RECORDED' in filtered_df.columns else 0
-percent_change = round(((ACHIEVED TOTAL WEIGHT - EXPECTED WEIGHT) / EXPECTED WEIGHT) * 100, 2) if avg_expected != 0 else 0
+
 total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
 total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
+
+# Calculate percent change based on total weights
+percent_change = round(((total_achieved_weight - total_expected_weight) / total_expected_weight) * 100, 2) if total_expected_weight != 0 else 0
 
 # ------------------- STYLED BOXED KPIs -------------------
 kpi_style = """
