@@ -23,7 +23,7 @@ EXPIRY_HOURS = 16
 
 # ------------------- FILE UPLOAD FUNCTION -------------------
 def upload_file():
-    uploaded_file = st.file_uploader("📁 Upload Excel File", type=["xlsx"])
+    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
@@ -74,7 +74,7 @@ if 'MONTH' in df.columns:
 
 if 'MACHINE' in df.columns:
     machine_list = df['MACHINE'].dropna().unique()
-    selected_machines = st.sidebar.multiselect("🧰 Select Machine(s)", machine_list, default=machine_list)
+    selected_machines = st.sidebar.multiselect("Select Machine(s)", machine_list, default=machine_list)
     filtered_df = df[df['MACHINE'].isin(selected_machines)]
 else:
     st.error("Column 'MACHINE' not found.")
@@ -82,7 +82,7 @@ else:
 
 if 'PIPE' in df.columns:
     size_list = df['PIPE'].dropna().unique()
-    selected_sizes = st.sidebar.multiselect("📏 Select Sizes", size_list, default=size_list)
+    selected_sizes = st.sidebar.multiselect("Select Sizes", size_list, default=size_list)
     filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
 else:
     st.error("Column 'PIPE' not found.")
@@ -91,7 +91,7 @@ else:
 # ------------------- KPIs -------------------
 avg_expected = round(filtered_df['EXPECTED'].mean(), 2) if 'EXPECTED' in filtered_df.columns else 0
 avg_recorded = round(filtered_df['RECORDED'].mean(), 2) if 'RECORDED' in filtered_df.columns else 0
-percent_change = round(((avg_recorded - avg_expected) / avg_expected) * 100, 2) if avg_expected != 0 else 0
+percent_change = round(((ACHIEVED TOTAL WEIGHT - EXPECTED WEIGHT) / EXPECTED WEIGHT) * 100, 2) if avg_expected != 0 else 0
 total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
 total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
@@ -174,7 +174,7 @@ else:
             cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- DATA TABLE -------------------
-with st.expander("🔍 View Raw Data"):
+with st.expander("View Raw Data"):
     columns_to_show = [col for col in ['MONTH','MACHINE','PIPE','EXPECTED','RECORDED','EXPECTED WEIGHT','ACHIEVED TOTAL WEIGHT','% CHANGE'] if col in filtered_df.columns]
     st.dataframe(filtered_df[columns_to_show])
 
