@@ -123,7 +123,7 @@ col5.markdown(kpi_style.format(label="% Change", value=f"{percent_change}%"), un
 
 # ------------------- BAR CHARTS -------------------
 if len(selected_machines) == 1:
-    # Single machine = large bar chart
+    # Single machine = large horizontal bar chart
     chart_height = 500
     melted_df = filtered_df.melt(
         id_vars=['PIPE'],
@@ -133,11 +133,12 @@ if len(selected_machines) == 1:
     )
     fig = px.bar(
         melted_df,
-        x='PIPE',
-        y='Output',
+        y='PIPE',  # switched to horizontal
+        x='Output',
         color='Type',
         barmode='group',
         text='Output',
+        orientation='h',
         title=f"Size-wise Expected vs Recorded Output - Machine {selected_machines[0]}",
         labels={'PIPE': 'Size', 'Output': 'Output'},
         color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
@@ -145,23 +146,22 @@ if len(selected_machines) == 1:
     )
     fig.update_traces(
         texttemplate='%{text:.0f}',
-        textposition='outside',
-        cliponaxis=False
+        textposition='outside'
     )
     fig.update_layout(
         uniformtext_minsize=8,
         uniformtext_mode='show',
-        yaxis_title="Output",
-        xaxis_title="Size",
-        bargap=0.2,
+        xaxis_title="Output",
+        yaxis_title="Size",
+        bargap=0.3,
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=60, b=60, l=40, r=40)
+        yaxis={'categoryorder':'total ascending'}
     )
     st.plotly_chart(fig, use_container_width=True)
 
 else:
-    # Multiple machines = smaller bar charts in 2x2 layout
-    chart_height = 300
+    # Multiple machines = smaller horizontal bar charts in 2x2 layout
+    chart_height = 350
     machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]
     for chunk in machine_chunks:
         cols = st.columns(len(chunk))
@@ -175,11 +175,12 @@ else:
             )
             fig = px.bar(
                 melted_df,
-                x='PIPE',
-                y='Output',
+                y='PIPE',
+                x='Output',
                 color='Type',
                 barmode='group',
                 text='Output',
+                orientation='h',
                 title=f"Machine {machine}",
                 labels={'PIPE': 'Size', 'Output': 'Output'},
                 color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
@@ -187,17 +188,16 @@ else:
             )
             fig.update_traces(
                 texttemplate='%{text:.0f}',
-                textposition='outside',
-                cliponaxis=False
+                textposition='outside'
             )
             fig.update_layout(
                 uniformtext_minsize=8,
                 uniformtext_mode='show',
-                yaxis_title="Output",
-                xaxis_title="Size",
-                bargap=0.2,
+                xaxis_title="Output",
+                yaxis_title="Size",
+                bargap=0.3,
                 plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(t=60, b=60, l=40, r=40)
+                yaxis={'categoryorder':'total ascending'}
             )
             cols[i].plotly_chart(fig, use_container_width=True)
 
