@@ -69,7 +69,7 @@ if 'EXPECTED WEIGHT' in df.columns and 'ACHIEVED TOTAL WEIGHT' in df.columns:
 
 # YEAR FILTER (2025-2050)
 if 'YEAR' in df.columns:
-    year_list = list(range(2020, 2051))
+    year_list = list(range(2025, 2051))
     selected_years = st.sidebar.multiselect("Select Year(s)", year_list, default=year_list)
     df = df[df['YEAR'].isin(selected_years)]
 
