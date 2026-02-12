@@ -42,6 +42,7 @@ if os.path.exists(UPLOAD_PATH):
 else:
     upload_file()
 
+
 # ------------------- READ DATA -------------------
 try:
     try:
@@ -52,58 +53,73 @@ except Exception as e:
     st.error(f"Failed to read file: {e}")
     st.stop()
 
-# ------------------- CLEAN COLUMN NAMES -------------------
-df.columns = df.columns.str.strip().str.replace('\n','').str.replace(' ','_')
-# Optional: show columns for debugging
-# st.write("Columns in file:", df.columns.tolist())
-
 # ------------------- CLEAN NUMERIC COLUMNS -------------------
-numeric_cols = ['STANDARD_OUTPUT(KG/HR)', 'EXPECTED_OUTPUT(KG)',
-                'ACHIEVED_TOTAL_WEIGHT(KG)', 'TOTAL_HOURS']
-for col in numeric_cols:
+numeric_columns = ['EXPECTED', 'RECORDED', 'EXPECTED WEIGHT', 
+                   'ACHIEVED TOTAL WEIGHT', 'TOTAL HOURS']
+
+for col in numeric_columns:
     if col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        df[col] = pd.to_numeric(df[col], errors='coerce')
 
-# ------------------- CALCULATE RECORDED RATE AND % CHANGE -------------------
-df['RECORDED(KG/HR)'] = df.apply(
-    lambda x: x['ACHIEVED_TOTAL_WEIGHT(KG)']/x['TOTAL_HOURS'] if x['TOTAL_HOURS'] != 0 else 0, axis=1
-)
-df['%_CHANGE'] = ((df['ACHIEVED_TOTAL_WEIGHT(KG)'] - df['EXPECTED_OUTPUT(KG)'])
-                  / df['EXPECTED_OUTPUT(KG)'].replace(0,1)) * 100
-
-# ------------------- AUTO EXTRACT DATE INFO -------------------
-df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
-df['YEAR'] = df['DATE'].dt.year
-df['MONTH'] = df['DATE'].dt.month
-df['WEEK'] = df['DATE'].dt.isocalendar().week
+# ------------------- CALCULATE % CHANGE -------------------
+if 'EXPECTED WEIGHT' in df.columns and 'ACHIEVED TOTAL WEIGHT' in df.columns:
+    df['% CHANGE'] = ((df['ACHIEVED TOTAL WEIGHT'] - df['EXPECTED WEIGHT']) 
+                      / df['EXPECTED WEIGHT']) * 100
 
 # ------------------- SIDEBAR FILTERS -------------------
-selected_years = st.sidebar.multiselect("Year", sorted(df['YEAR'].dropna().unique()), default=sorted(df['YEAR'].dropna().unique()))
-df = df[df['YEAR'].isin(selected_years)]
 
-selected_months = st.sidebar.multiselect("Month", sorted(df['MONTH'].dropna().unique()), default=sorted(df['MONTH'].dropna().unique()))
-df = df[df['MONTH'].isin(selected_months)]
+# YEAR FILTER (2025-2050)
+if 'YEAR' in df.columns:
+    year_list = list(range(2025, 2051))
+    selected_years = st.sidebar.multiselect("Select Year(s)", year_list, default=year_list)
+    df = df[df['YEAR'].isin(selected_years)]
 
-selected_materials = st.sidebar.multiselect("Material", sorted(df['MATERIAL'].dropna().unique()), default=sorted(df['MATERIAL'].dropna().unique()))
-df = df[df['MATERIAL'].isin(selected_materials)]
+# MONTH FILTER
+if 'MONTH' in df.columns:
+    month_list = sorted(df['MONTH'].dropna().unique())
+    selected_months = st.sidebar.multiselect("Select Month(s)", month_list, default=month_list)
+    df = df[df['MONTH'].isin(selected_months)]
 
-selected_machines = st.sidebar.multiselect("Machine", sorted(df['MACHINE'].dropna().unique()), default=sorted(df['MACHINE'].dropna().unique()))
-df = df[df['MACHINE'].isin(selected_machines)]
+# MATERIAL FILTER (predefined list)
+material_list = ['HDPE', 'PPR', 'PP']
+if 'MATERIAL' in df.columns:
+    selected_materials = st.sidebar.multiselect("Select Material(s)", material_list, default=material_list)
+    df = df[df['MATERIAL'].isin(selected_materials)]
 
-selected_supervisors = st.sidebar.multiselect("Supervisor", sorted(df['SUPERVISOR'].dropna().unique()), default=sorted(df['SUPERVISOR'].dropna().unique()))
-df = df[df['SUPERVISOR'].isin(selected_supervisors)]
+# MACHINE FILTER
+if 'MACHINE' in df.columns:
+    machine_list = df['MACHINE'].dropna().unique()
+    selected_machines = st.sidebar.multiselect("Select Machine(s)", machine_list, default=machine_list)
+    filtered_df = df[df['MACHINE'].isin(selected_machines)]
+else:
+    st.error("MACHINE column missing")
+    st.stop()
 
-selected_sizes = st.sidebar.multiselect("Pipe Size", sorted(df['PIPE_SIZE'].dropna().unique()), default=sorted(df['PIPE_SIZE'].dropna().unique()))
-df = df[df['PIPE_SIZE'].isin(selected_sizes)]
+# PIPE FILTER
+if 'PIPE' in filtered_df.columns:
+    size_list = filtered_df['PIPE'].dropna().unique()
+    selected_sizes = st.sidebar.multiselect("Select Sizes", size_list, default=size_list)
+    filtered_df = filtered_df[filtered_df['PIPE'].isin(selected_sizes)]
+else:
+    st.error("PIPE column missing")
+    st.stop()
 
 # ------------------- KPIs -------------------
-total_expected = df['EXPECTED_OUTPUT(KG)'].sum()
-total_achieved = df['ACHIEVED_TOTAL_WEIGHT(KG)'].sum()
-avg_expected = df['EXPECTED_OUTPUT(KG)'].mean()
-avg_recorded = df['RECORDED(KG/HR)'].mean()
-percent_change = ((total_achieved - total_expected) / total_expected) * 100 if total_expected != 0 else 0
-change_color = "green" if -5 <= percent_change <= 5 else "red"
+avg_expected = round(filtered_df['EXPECTED'].mean(), 2) if 'EXPECTED' in filtered_df.columns else 0
+avg_recorded = round(filtered_df['RECORDED'].mean(), 2) if 'RECORDED' in filtered_df.columns else 0
+total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
+total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
+# Calculate percent change based on total weights
+percent_change = round(((total_achieved_weight - total_expected_weight) / total_expected_weight) * 100, 2) if total_expected_weight != 0 else 0
+
+# COLOR RULE
+if -5 <= percent_change <= 5:
+    change_color = "green"
+else:
+    change_color = "red"
+
+# ------------------- STYLED BOXED KPIs -------------------
 def kpi_box(label, value, color="black"):
     return f"""
     <div style='
@@ -121,33 +137,64 @@ def kpi_box(label, value, color="black"):
     """
 
 col1, col2, col3, col4, col5 = st.columns(5)
-col1.markdown(kpi_box("Achieved Weight", round(total_achieved,2)), unsafe_allow_html=True)
-col2.markdown(kpi_box("Expected Weight", round(total_expected,2)), unsafe_allow_html=True)
-col3.markdown(kpi_box("Avg Expected Output", round(avg_expected,2)), unsafe_allow_html=True)
-col4.markdown(kpi_box("Avg Recorded Output", round(avg_recorded,2)), unsafe_allow_html=True)
-col5.markdown(kpi_box("% Change", f"{round(percent_change,2)}%", color=change_color), unsafe_allow_html=True)
+col1.markdown(kpi_box("Achieved Weight", total_achieved_weight), unsafe_allow_html=True)
+col2.markdown(kpi_box("Expected Weight", total_expected_weight), unsafe_allow_html=True)
+col3.markdown(kpi_box("Avg Expected Output", avg_expected), unsafe_allow_html=True)
+col4.markdown(kpi_box("Avg Recorded Output", avg_recorded), unsafe_allow_html=True)
+col5.markdown(kpi_box("% Change", f"{percent_change}%", color=change_color), unsafe_allow_html=True)
 
-# ------------------- WEEKLY TREND CHART -------------------
-st.subheader("Weekly Trend: Expected vs Achieved Weight")
-weekly_df = df.groupby(['WEEK','PIPE_SIZE']).agg({
-    'EXPECTED_OUTPUT(KG)': 'sum',
-    'ACHIEVED_TOTAL_WEIGHT(KG)': 'sum'
-}).reset_index()
+# ------------------- BAR CHARTS -------------------
+def plot_machine_chart(machine_df, machine_name, chart_height=350):
+    melted_df = machine_df.melt(
+        id_vars=['PIPE'],
+        value_vars=['EXPECTED', 'RECORDED'],
+        var_name='Type',
+        value_name='Output'
+    )
+    fig = px.bar(
+        melted_df,
+        y='PIPE',
+        x='Output',
+        color='Type',
+        barmode='group',
+        text='Output',
+        orientation='h',
+        title=f"Machine {machine_name}",
+        labels={'PIPE': 'Size', 'Output': 'Output'},
+        color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
+        height=chart_height
+    )
+    fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
+    fig.update_layout(
+        uniformtext_minsize=8,
+        uniformtext_mode='show',
+        xaxis_title="Output",
+        yaxis_title="Size",
+        bargap=0.3,
+        plot_bgcolor='rgba(0,0,0,0)',
+        yaxis={'categoryorder':'total ascending'}
+    )
+    return fig
 
-fig_trend = px.line(
-    weekly_df,
-    x='WEEK',
-    y=['EXPECTED_OUTPUT(KG)','ACHIEVED_TOTAL_WEIGHT(KG)'],
-    color='PIPE_SIZE',
-    markers=True,
-    labels={'value':'Weight (KG)','variable':'Type'},
-    title="Weekly Production Trend by Size"
-)
-st.plotly_chart(fig_trend, use_container_width=True)
+if len(selected_machines) == 1:
+    st.plotly_chart(plot_machine_chart(filtered_df, selected_machines[0], chart_height=500), use_container_width=True)
+else:
+    machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]
+    for chunk in machine_chunks:
+        cols = st.columns(len(chunk))
+        for i, machine in enumerate(chunk):
+            machine_df = filtered_df[filtered_df['MACHINE'] == machine]
+            cols[i].plotly_chart(plot_machine_chart(machine_df, machine), use_container_width=True)
 
 # ------------------- RAW DATA -------------------
 with st.expander("View Raw Data"):
-    st.dataframe(df)
+    columns_to_show = [col for col in [
+        'YEAR', 'MONTH', 'MATERIAL','MACHINE','PIPE',
+        'EXPECTED','RECORDED',
+        'EXPECTED WEIGHT','ACHIEVED TOTAL WEIGHT',
+        '% CHANGE'
+    ] if col in filtered_df.columns]
+    st.dataframe(filtered_df[columns_to_show])
 
 # ------------------- RESET BUTTON -------------------
 if st.button("🔄 Upload a New File"):
