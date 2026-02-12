@@ -7,7 +7,7 @@ import os
 
 # ------------------- PAGE CONFIG -------------------
 st.set_page_config(page_title="Production Tracker", layout="wide")
-st_autorefresh(interval=5 * 60 * 1000, key="refresh")
+st_autorefresh(interval=5 * 60 * 1000, key="refresh")  # auto-refresh every 5 min
 
 # ------------------- LOGO AND TITLE -------------------
 col1, col2 = st.columns([0.2, 0.8])
@@ -62,10 +62,8 @@ for col in numeric_columns:
 
 # ------------------- CALCULATE % CHANGE -------------------
 if 'EXPECTED WEIGHT' in df.columns and 'ACHIEVED TOTAL WEIGHT' in df.columns:
-    df['% CHANGE'] = (
-        (df['ACHIEVED TOTAL WEIGHT'] - df['EXPECTED WEIGHT']) 
-        / df['EXPECTED WEIGHT']
-    ) * 100
+    df['% CHANGE'] = ((df['ACHIEVED TOTAL WEIGHT'] - df['EXPECTED WEIGHT']) 
+                      / df['EXPECTED WEIGHT']) * 100
 
 # ------------------- SIDEBAR FILTERS -------------------
 
@@ -76,9 +74,9 @@ if 'MONTH' in df.columns:
         "Select Month(s)", month_list, default=month_list)
     df = df[df['MONTH'].isin(selected_months)]
 
-# MATERIAL (NEW)
+# MATERIAL (NEW: predefined list)
+material_list = ['HDPE', 'PPR', 'PP']
 if 'MATERIAL' in df.columns:
-    material_list = df['MATERIAL'].dropna().unique()
     selected_materials = st.sidebar.multiselect(
         "Select Material(s)", material_list, default=material_list)
     df = df[df['MATERIAL'].isin(selected_materials)]
@@ -104,72 +102,111 @@ else:
     st.stop()
 
 # ------------------- KPIs -------------------
-total_expected_weight = filtered_df['EXPECTED WEIGHT'].sum()
-total_achieved_weight = filtered_df['ACHIEVED TOTAL WEIGHT'].sum()
+avg_expected = round(filtered_df['EXPECTED'].mean(), 2) if 'EXPECTED' in filtered_df.columns else 0
+avg_recorded = round(filtered_df['RECORDED'].mean(), 2) if 'RECORDED' in filtered_df.columns else 0
 
-percent_change = (
-    (total_achieved_weight - total_expected_weight)
-    / total_expected_weight * 100
-) if total_expected_weight != 0 else 0
+total_expected_weight = round(filtered_df['EXPECTED WEIGHT'].sum(), 2) if 'EXPECTED WEIGHT' in filtered_df.columns else 0
+total_achieved_weight = round(filtered_df['ACHIEVED TOTAL WEIGHT'].sum(), 2) if 'ACHIEVED TOTAL WEIGHT' in filtered_df.columns else 0
 
-# COLOR RULE
-if -5 <= percent_change <= 5:
-    change_color = "green"
-else:
-    change_color = "red"
+# Calculate percent change based on total weights
+percent_change = round(((total_achieved_weight - total_expected_weight) / total_expected_weight) * 100, 2) if total_expected_weight != 0 else 0
 
+# ------------------- STYLED BOXED KPIs -------------------
 kpi_style = """
-<div style='background-color:#f0f2f6;
-padding:12px;
-border-radius:10px;
-text-align:center;
-font-weight:bold;
-box-shadow:2px 2px 5px rgba(0,0,0,0.1);'>
-<div style='font-size:12px;color:grey;'>{label}</div>
-<div style='font-size:20px;color:{color};'>{value}</div>
+<div style='
+    background-color: #f0f2f6;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+'>
+    <div style='font-size:12px;color:grey;'>{label}</div>
+    <div style='font-size:20px;color:black;'>{value}</div>
 </div>
 """
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.markdown(kpi_style.format(label="Achieved Weight", value=total_achieved_weight), unsafe_allow_html=True)
+col2.markdown(kpi_style.format(label="Expected Weight", value=total_expected_weight), unsafe_allow_html=True)
+col3.markdown(kpi_style.format(label="Avg Expected Output", value=avg_expected), unsafe_allow_html=True)
+col4.markdown(kpi_style.format(label="Avg Recorded Output", value=avg_recorded), unsafe_allow_html=True)
+col5.markdown(kpi_style.format(label="% Change", value=f"{percent_change}%"), unsafe_allow_html=True)
 
-col1.markdown(
-    kpi_style.format(label="Achieved Weight",
-                     value=round(total_achieved_weight,2),
-                     color="black"),
-    unsafe_allow_html=True)
+# ------------------- BAR CHARTS -------------------
+if len(selected_machines) == 1:
+    # Single machine = large horizontal bar chart
+    chart_height = 500
+    melted_df = filtered_df.melt(
+        id_vars=['PIPE'],
+        value_vars=['EXPECTED', 'RECORDED'],
+        var_name='Type',
+        value_name='Output'
+    )
+    fig = px.bar(
+        melted_df,
+        y='PIPE',  # horizontal
+        x='Output',
+        color='Type',
+        barmode='group',
+        text='Output',
+        orientation='h',
+        title=f"Size-wise Expected vs Recorded Output - Machine {selected_machines[0]}",
+        labels={'PIPE': 'Size', 'Output': 'Output'},
+        color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
+        height=chart_height
+    )
+    fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
+    fig.update_layout(
+        uniformtext_minsize=8,
+        uniformtext_mode='show',
+        xaxis_title="Output",
+        yaxis_title="Size",
+        bargap=0.3,
+        plot_bgcolor='rgba(0,0,0,0)',
+        yaxis={'categoryorder':'total ascending'}
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-col2.markdown(
-    kpi_style.format(label="Expected Weight",
-                     value=round(total_expected_weight,2),
-                     color="black"),
-    unsafe_allow_html=True)
-
-col3.markdown(
-    kpi_style.format(label="% Change",
-                     value=f"{round(percent_change,2)}%",
-                     color=change_color),
-    unsafe_allow_html=True)
-
-# ------------------- CHART -------------------
-melted_df = filtered_df.melt(
-    id_vars=['PIPE'],
-    value_vars=['EXPECTED WEIGHT','ACHIEVED TOTAL WEIGHT'],
-    var_name='Type',
-    value_name='Weight'
-)
-
-fig = px.bar(
-    melted_df,
-    y='PIPE',
-    x='Weight',
-    color='Type',
-    orientation='h',
-    barmode='group',
-    title="Expected vs Achieved Weight",
-    height=500
-)
-
-st.plotly_chart(fig, use_container_width=True)
+else:
+    # Multiple machines = smaller horizontal bar charts in 2x2 layout
+    chart_height = 350
+    machine_chunks = [selected_machines[i:i+2] for i in range(0, len(selected_machines), 2)]
+    for chunk in machine_chunks:
+        cols = st.columns(len(chunk))
+        for i, machine in enumerate(chunk):
+            machine_df = filtered_df[filtered_df['MACHINE'] == machine]
+            melted_df = machine_df.melt(
+                id_vars=['PIPE'],
+                value_vars=['EXPECTED', 'RECORDED'],
+                var_name='Type',
+                value_name='Output'
+            )
+            fig = px.bar(
+                melted_df,
+                y='PIPE',
+                x='Output',
+                color='Type',
+                barmode='group',
+                text='Output',
+                orientation='h',
+                title=f"Machine {machine}",
+                labels={'PIPE': 'Size', 'Output': 'Output'},
+                color_discrete_map={'EXPECTED': 'grey', 'RECORDED': 'orange'},
+                height=chart_height
+            )
+            fig.update_traces(texttemplate='%{text:.0f}', textposition='outside')
+            fig.update_layout(
+                uniformtext_minsize=8,
+                uniformtext_mode='show',
+                xaxis_title="Output",
+                yaxis_title="Size",
+                bargap=0.3,
+                plot_bgcolor='rgba(0,0,0,0)',
+                yaxis={'categoryorder':'total ascending'}
+            )
+            cols[i].plotly_chart(fig, use_container_width=True)
 
 # ------------------- RAW DATA -------------------
 with st.expander("View Raw Data"):
