@@ -27,12 +27,12 @@ def upload_file():
     if uploaded_file is not None:
         with open(UPLOAD_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
-        st.success("File uploaded successfully!")
-        st.experimental_rerun()
+        st.success("File uploaded successfully! Please refresh the page to load the dashboard.")
+        st.stop()
     else:
         st.stop()
 
-# ------------------- FILE CHECK -------------------
+# ------------------- CHECK FILE EXISTENCE & EXPIRY -------------------
 if os.path.exists(UPLOAD_PATH):
     file_mtime = os.path.getmtime(UPLOAD_PATH)
     age_seconds = time.time() - file_mtime
@@ -41,6 +41,7 @@ if os.path.exists(UPLOAD_PATH):
         upload_file()
 else:
     upload_file()
+
 
 # ------------------- READ DATA -------------------
 try:
